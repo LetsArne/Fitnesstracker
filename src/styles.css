@@ -781,6 +781,11 @@ label.field {
   font-size: 14px;
 }
 
+.notice.listening {
+  margin-top: 8px;
+  font-weight: 600;
+}
+
 .notice.good {
   background: var(--protein-soft);
 }
@@ -866,27 +871,27 @@ label.field {
   }
 }
 
-/* Wisch-Regler für Nährwerte */
+/* Nährwert-Regler mit Pfeilen */
 .dial {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 2px 0;
-  border-radius: 12px;
-  touch-action: none;
   user-select: none;
   -webkit-user-select: none;
-  cursor: ns-resize;
 }
 
-.dial:active {
-  background: var(--surface-2);
-}
-
-.dial b {
+.dial-value {
   font-size: 20px;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 1.2;
+  min-width: 56px;
+  padding: 2px 4px;
+  border-radius: 8px;
+}
+
+.dial-value:active {
+  background: var(--surface-2);
 }
 
 .dial input {
@@ -898,15 +903,25 @@ label.field {
 }
 
 .dial-arrow {
-  font-size: 11px;
-  line-height: 0.8;
-  color: var(--muted);
-  opacity: 0.6;
+  width: 100%;
+  max-width: 64px;
+  height: 30px;
+  border-radius: 10px;
+  font-size: 12px;
+  color: var(--ink-2);
+  background: var(--surface-2);
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+}
+
+.dial-arrow:active {
+  background: var(--line);
 }
 
 .dial-label {
   font-size: 12px;
   color: var(--muted);
+  margin-top: 4px;
 }
 
 .dial.changed .dial-label::after {

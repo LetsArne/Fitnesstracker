@@ -20,15 +20,28 @@ type View =
   | { kind: 'manual'; initial?: ManualInitial; photo?: string }
 
 // Web Speech API (kostenlos im Browser eingebaut)
+type SpeechResult = ArrayLike<{ transcript: string; confidence: number }> & { isFinal: boolean }
 type SpeechRec = {
   lang: string
   interimResults: boolean
   continuous: boolean
+  maxAlternatives: number
   start(): void
   stop(): void
-  onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null
+  abort(): void
+  onstart: (() => void) | null
+  onresult: ((e: { results: ArrayLike<SpeechResult> }) => void) | null
   onend: (() => void) | null
-  onerror: (() => void) | null
+  onerror: ((e: { error: string }) => void) | null
+}
+
+const SPEECH_ERRORS: Record<string, string> = {
+  'not-allowed': 'Mikrofon ist nicht erlaubt. Bitte in den Browser-Einstellungen freigeben.',
+  'service-not-allowed':
+    'Spracherkennung ist aus. iPhone: Einstellungen → Siri → „Siri & Diktieren“ bzw. Tastatur → „Diktierfunktion“ aktivieren.',
+  'no-speech': 'Ich habe nichts gehört – tippe nochmal auf 🎤 und sprich direkt los.',
+  'audio-capture': 'Kein Mikrofon gefunden.',
+  network: 'Spracherkennung braucht eine Internetverbindung.',
 }
 const SpeechCtor: (new () => SpeechRec) | undefined =
   (window as unknown as Record<string, new () => SpeechRec>).SpeechRecognition ??
@@ -43,7 +56,8 @@ export function AddSheet({ date, meal: initialMeal, onClose }: { date: string; m
   const [overrides, setOverrides] = useState<Record<string, { amount: number; food: Food }>>({})
   const [removed, setRemoved] = useState<Set<string>>(new Set())
   const [online, setOnline] = useState<{ q: string; loading: boolean; results: Food[]; error?: string } | null>(null)
-  const [listening, setListening] = useState(false)
+  const [listening, setListening] = useState<'off' | 'starting' | 'on'>('off')
+  const [speechError, setSpeechError] = useState<string | null>(null)
   const recRef = useRef<SpeechRec | null>(null)
   const abortRef = useRef<AbortController | null>(null)
 
@@ -86,28 +100,66 @@ export function AddSheet({ date, meal: initialMeal, onClose }: { date: string; m
 
   useEffect(() => () => abortRef.current?.abort(), [])
 
+  // Bewertet, wie gut ein erkannter Satz zu bekannten Lebensmitteln passt
+  const speechQuality = (t: string) => {
+    const items = parseInput(t, foods)
+    return items.filter((i) => i.food).length * 10 - items.filter((i) => !i.food).length * 6
+  }
+
   const toggleMic = () => {
     if (!SpeechCtor) return
-    if (listening) {
+    if (listening !== 'off') {
       recRef.current?.stop()
       return
     }
+    recRef.current?.abort()
+    setSpeechError(null)
     const rec = new SpeechCtor()
     rec.lang = 'de-DE'
     rec.interimResults = true
     rec.continuous = false
+    // Mehrere Vorschläge holen und den nehmen, der am besten zu Lebensmitteln passt
+    // (z. B. „Skyr“ statt „Skier“)
+    rec.maxAlternatives = 5
     const before = text.trim()
+    rec.onstart = () => setListening('on')
     rec.onresult = (e) => {
       let said = ''
-      for (let i = 0; i < e.results.length; i++) said += e.results[i][0].transcript
+      for (let i = 0; i < e.results.length; i++) {
+        const r = e.results[i]
+        let best = r[0]?.transcript ?? ''
+        if (r.isFinal && r.length > 1) {
+          let bestScore = speechQuality(best)
+          for (let j = 1; j < r.length; j++) {
+            const q = speechQuality(r[j].transcript)
+            if (q > bestScore) {
+              best = r[j].transcript
+              bestScore = q
+            }
+          }
+        }
+        said += (said ? ' ' : '') + best.trim()
+      }
       setText((before ? before + ', ' : '') + said)
     }
-    rec.onend = () => setListening(false)
-    rec.onerror = () => setListening(false)
+    rec.onend = () => setListening('off')
+    rec.onerror = (e) => {
+      setListening('off')
+      if (e.error !== 'aborted') setSpeechError(SPEECH_ERRORS[e.error] ?? 'Spracherkennung hat nicht geklappt – bitte nochmal versuchen.')
+    }
     recRef.current = rec
-    setListening(true)
-    rec.start()
+    setListening('starting')
+    try {
+      rec.start()
+    } catch {
+      setListening('off')
+      setSpeechError('Spracherkennung konnte nicht starten – bitte nochmal tippen.')
+    }
+    // Falls der Browser nie startet, nicht ewig im Wartezustand hängen bleiben
+    window.setTimeout(() => setListening((l) => (l === 'starting' ? 'off' : l)), 4000)
   }
+
+  useEffect(() => () => recRef.current?.abort(), [])
 
   // ---------- Barcode ----------
   const onBarcode = useCallback(
@@ -325,11 +377,21 @@ export function AddSheet({ date, meal: initialMeal, onClose }: { date: string; m
           enterKeyHint="done"
         />
         {SpeechCtor && (
-          <button className={'mic' + (listening ? ' on' : '')} onClick={toggleMic} aria-label="Spracheingabe">
-            🎤
+          <button
+            className={'mic' + (listening === 'on' ? ' on' : '')}
+            onClick={toggleMic}
+            aria-label={listening === 'off' ? 'Spracheingabe starten' : 'Spracheingabe beenden'}
+          >
+            {listening === 'off' ? '🎤' : '■'}
           </button>
         )}
       </div>
+      {listening !== 'off' && (
+        <div className="notice listening">
+          {listening === 'starting' ? 'Mikrofon startet …' : '🔴 Ich höre zu – sag z. B. „zwei Eier und ein Skyr“. Kurze Pause = fertig.'}
+        </div>
+      )}
+      {speechError && listening === 'off' && <div className="notice">{speechError}</div>}
 
       {!text.trim() && (
         <div className="tools">

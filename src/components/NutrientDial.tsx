@@ -1,9 +1,9 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { fmt } from '../lib/nutrition'
 
 /**
- * Zahl, die man durch Hoch-/Runterwischen verändert (wie ein Drehrad).
- * Antippen öffnet ein Eingabefeld zum direkten Eintippen.
+ * Zahl mit Pfeilen ▲▼ zum Anpassen. Gedrückt halten zählt schneller,
+ * Antippen der Zahl öffnet ein Eingabefeld zum direkten Eintippen.
  */
 export function NutrientDial({
   value,
@@ -24,39 +24,33 @@ export function NutrientDial({
 }) {
   const [editing, setEditing] = useState(false)
   const [text, setText] = useState('')
-  const drag = useRef<{ y: number; start: number; moved: boolean; last: number } | null>(null)
+  const timer = useRef<number | undefined>(undefined)
+  // aktueller Wert für das Wiederholen beim Gedrückthalten
+  const current = useRef(value)
+  current.current = value
 
-  // 10 px Wischen = ein Schritt
-  const PX_PER_STEP = 10
   const round = (v: number) => Math.max(0, Math.round(v / step) * step)
-
-  const onPointerDown = (e: React.PointerEvent) => {
-    if (editing) return
-    e.currentTarget.setPointerCapture(e.pointerId)
-    drag.current = { y: e.clientY, start: round(value), moved: false, last: round(value) }
+  const bump = (dir: 1 | -1) => {
+    const next = round(current.current + dir * step)
+    current.current = next
+    onChange(next)
   }
 
-  const onPointerMove = (e: React.PointerEvent) => {
-    const d = drag.current
-    if (!d) return
-    const dy = d.y - e.clientY
-    if (Math.abs(dy) > 4) d.moved = true
-    if (!d.moved) return
-    const next = round(d.start + Math.round(dy / PX_PER_STEP) * step)
-    if (next !== d.last) {
-      d.last = next
-      navigator.vibrate?.(4)
-      onChange(next)
-    }
-  }
+  const stop = () => window.clearTimeout(timer.current)
+  useEffect(() => stop, [])
 
-  const onPointerUp = () => {
-    const d = drag.current
-    drag.current = null
-    if (d && !d.moved) {
-      setText(fmt(value, digits).replace(/\./g, ''))
-      setEditing(true)
+  const press = (dir: 1 | -1) => (e: React.PointerEvent) => {
+    e.preventDefault()
+    bump(dir)
+    // nach kurzem Halten automatisch weiterzählen, immer schneller
+    let delay = 380
+    const repeat = () => {
+      bump(dir)
+      delay = Math.max(50, delay * 0.8)
+      timer.current = window.setTimeout(repeat, delay)
     }
+    stop()
+    timer.current = window.setTimeout(repeat, delay)
   }
 
   const commit = () => {
@@ -65,24 +59,23 @@ export function NutrientDial({
     setEditing(false)
   }
 
-  return (
-    <div
-      className={'dial' + (changed ? ' changed' : '')}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerCancel={() => (drag.current = null)}
-      onWheel={(e) => !editing && onChange(round(value + (e.deltaY < 0 ? step : -step)))}
-      role="spinbutton"
-      aria-label={label}
-      aria-valuenow={value}
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === 'ArrowUp') onChange(round(value + step))
-        if (e.key === 'ArrowDown') onChange(round(value - step))
-      }}
+  const arrow = (dir: 1 | -1) => (
+    <button
+      className="dial-arrow"
+      aria-label={`${label} ${dir > 0 ? 'mehr' : 'weniger'}`}
+      onPointerDown={press(dir)}
+      onPointerUp={stop}
+      onPointerLeave={stop}
+      onPointerCancel={stop}
+      onContextMenu={(e) => e.preventDefault()}
     >
-      <span className="dial-arrow">⌃</span>
+      {dir > 0 ? '▲' : '▼'}
+    </button>
+  )
+
+  return (
+    <div className={'dial' + (changed ? ' changed' : '')}>
+      {arrow(1)}
       {editing ? (
         <input
           autoFocus
@@ -92,11 +85,22 @@ export function NutrientDial({
           onFocus={(e) => e.target.select()}
           onBlur={commit}
           onKeyDown={(e) => e.key === 'Enter' && commit()}
+          aria-label={label}
         />
       ) : (
-        <b style={color ? { color } : undefined}>{fmt(value, digits)}</b>
+        <button
+          className="dial-value"
+          style={color ? { color } : undefined}
+          onClick={() => {
+            setText(fmt(value, digits).replace(/\./g, ''))
+            setEditing(true)
+          }}
+          aria-label={`${label}: ${fmt(value, digits)}, antippen zum Eintippen`}
+        >
+          {fmt(value, digits)}
+        </button>
       )}
-      <span className="dial-arrow">⌄</span>
+      {arrow(-1)}
       <span className="dial-label">{label}</span>
     </div>
   )

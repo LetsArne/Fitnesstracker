@@ -82,3 +82,20 @@ describe('Eigene Werte', () => {
     expect(rankFoods('ei', [own]).filter((f) => f.name === 'Ei')).toHaveLength(1)
   })
 })
+
+describe('Spracherkennungs-Fehler', () => {
+  it('erkennt ähnlich klingende Wörter', () => {
+    expect(short('zwei Skier und zwei Eier')).toEqual([['Skyr', 300], ['Ei', 116]])
+    expect(short('Mager Quark')[0][0]).toBe('Magerquark')
+    expect(short('Hähnchen Brust')[0][0]).toBe('Hähnchenbrust')
+    expect(short('ein Protein Riegel')[0][0]).toBe('Proteinriegel')
+    expect(short('Hafer Flocken')[0][0]).toBe('Haferflocken')
+    expect(short('Musli')[0][0]).toBe('Müsli')
+  })
+  it('bleibt bei klaren Wörtern genau', () => {
+    expect(short('Reis')[0][0]).toBe('Reis (gekocht)')
+    expect(short('Eis')[0][0]).toBe('Speiseeis')
+    expect(short('Ei')[0][0]).toBe('Ei')
+    expect(short('Tee')[0][0]).toBe('Wasser')
+  })
+})

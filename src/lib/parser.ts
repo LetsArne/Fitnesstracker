@@ -117,20 +117,77 @@ function levenshtein(a: string, b: string): number {
   return dp[b.length]
 }
 
+/**
+ * Kölner Phonetik: gleich klingende deutsche Wörter bekommen denselben Code
+ * („Skier“ = „Skyr“, „Hänchen“ = „Hähnchen“). Fängt Fehler der Spracherkennung ab.
+ */
+export function phonetic(word: string): string {
+  const w = normalize(word).replace(/[^a-z]/g, '')
+  let code = ''
+  for (let i = 0; i < w.length; i++) {
+    const c = w[i]
+    const prev = w[i - 1] ?? ''
+    const next = w[i + 1] ?? ''
+    let d = ''
+    if ('aeijouy'.includes(c)) d = '0'
+    else if (c === 'h') d = ''
+    else if (c === 'b') d = '1'
+    else if (c === 'p') d = next === 'h' ? '3' : '1'
+    else if (c === 'd' || c === 't') d = 'csz'.includes(next) ? '8' : '2'
+    else if ('fvw'.includes(c)) d = '3'
+    else if ('gkq'.includes(c)) d = '4'
+    else if (c === 'c') {
+      if (i === 0) d = 'ahkloqrux'.includes(next) ? '4' : '8'
+      else d = 'sz'.includes(prev) ? '8' : 'ahkoqux'.includes(next) ? '4' : '8'
+    } else if (c === 'x') d = 'ckq'.includes(prev) ? '8' : '48'
+    else if (c === 'l') d = '5'
+    else if (c === 'm' || c === 'n') d = '6'
+    else if (c === 'r') d = '7'
+    else if (c === 's' || c === 'z') d = '8'
+    code += d
+  }
+  // doppelte Ziffern zusammenfassen, Vokale (0) außer am Anfang entfernen
+  let out = ''
+  for (const d of code) if (d !== out[out.length - 1]) out += d
+  return out[0] + out.slice(1).replace(/0/g, '')
+}
+
 function score(query: string, alias: string): number {
   if (!query || !alias) return 0
   if (query === alias) return 1000 + alias.length
+  // Spracherkennung trennt oft zusammengesetzte Wörter: „Mager Quark“, „Hähnchen Brust“
+  if (query.replace(/ /g, '') === alias.replace(/ /g, '')) return 900 + alias.length
   if ((' ' + query + ' ').includes(' ' + alias + ' ')) return 500 + alias.length * 10
   const qWords = query.split(' ')
   const aWords = alias.split(' ')
   if (qWords.map(stem).join(' ') === aWords.map(stem).join(' ')) return 450
   if (aWords.length === 1 && qWords.some((w) => stem(w) === stem(alias))) return 300 + alias.length
+  const similarity = (a: string, b: string) => 1 - levenshtein(a, b) / Math.max(a.length, b.length)
+  let best = 0
   if (alias.length >= 4) {
-    const dist = levenshtein(query, alias)
-    const sim = 1 - dist / Math.max(query.length, alias.length)
-    if (sim >= 0.75) return Math.round(200 * sim)
+    const sim = similarity(query, alias)
+    if (sim >= 0.75) best = Math.round(200 * sim)
   }
-  return 0
+  // Gleicher Klang zählt nur, wenn die Schreibweise auch halbwegs ähnlich ist
+  // („Skier“ → „Skyr“ ja, „Bannane“ → „Bohnen“ nein, weil „Banane“ ähnlicher ist)
+  if (alias.length >= 3 && query.length >= 4) {
+    const pa = phonetic(alias)
+    if (pa.length >= 2) {
+      const whole = query.replace(/ /g, '')
+      if (phonetic(whole) === pa) {
+        const sim = similarity(whole, alias.replace(/ /g, ''))
+        if (sim >= 0.4) best = Math.max(best, Math.round(150 + 100 * sim))
+      } else if (aWords.length === 1) {
+        for (const w of qWords) {
+          if (w.length >= 4 && phonetic(w) === pa) {
+            const sim = similarity(w, alias)
+            if (sim >= 0.4) best = Math.max(best, Math.round(130 + 100 * sim))
+          }
+        }
+      }
+    }
+  }
+  return best
 }
 
 /** Bestes passendes Lebensmittel für einen Suchtext. */
@@ -140,6 +197,10 @@ export function matchFood(query: string, custom: Food[] = []): Food | undefined 
 
 /** Lokale Suche (eigene Lebensmittel zuerst, dann Grunddatenbank). */
 export function rankFoods(query: string, custom: Food[] = [], limit = 20): Food[] {
+  return scoredFoods(query, custom, limit).map((x) => x.food)
+}
+
+function scoredFoods(query: string, custom: Food[], limit: number): { food: Food; s: number }[] {
   const q = normalize(query)
   if (!q) return []
   const scored: { food: Food; s: number }[] = []
@@ -157,7 +218,6 @@ export function rankFoods(query: string, custom: Food[] = [], limit = 20): Food[
   return scored
     .filter(({ food }) => (seen.has(food.id) ? false : (seen.add(food.id), true)))
     .slice(0, limit)
-    .map((x) => x.food)
 }
 
 function portionGrams(food: Food, label: string): number | undefined {
@@ -171,6 +231,8 @@ export function parseSegment(segment: string, side: boolean, custom: Food[] = []
   let portionLabel: string | undefined
   let size = 1
   const rest: string[] = []
+  // wie rest, aber inkl. Portionswort – für Namen wie „Protein Riegel“ oder „Dosen Mais“
+  const restWithUnit: string[] = []
 
   for (const t of tokens) {
     const num = t.match(/^(\d+)(?:[.,](\d+))?$/)
@@ -179,12 +241,24 @@ export function parseSegment(segment: string, side: boolean, custom: Food[] = []
     else if (frac) qty = (qty ?? 1) * (Number(frac[1]) / Number(frac[2]))
     else if (t in NUMBER_WORDS) qty = (qty ?? 1) * NUMBER_WORDS[t]
     else if (t in MASS_UNITS && massFactor === undefined) massFactor = MASS_UNITS[t]
-    else if (t in PORTION_UNITS && !portionLabel) portionLabel = PORTION_UNITS[t]
-    else if (t in SIZE_WORDS) size = SIZE_WORDS[t]
-    else if (!FILLER.has(t)) rest.push(t)
+    else if (t in PORTION_UNITS && !portionLabel) {
+      portionLabel = PORTION_UNITS[t]
+      restWithUnit.push(t)
+    } else if (t in SIZE_WORDS) size = SIZE_WORDS[t]
+    else if (!FILLER.has(t)) {
+      rest.push(t)
+      restWithUnit.push(t)
+    }
   }
 
-  const food = matchFood(rest.join(' '), custom)
+  let food = matchFood(rest.join(' '), custom)
+  if (portionLabel && rest.length) {
+    const withUnit = scoredFoods(restWithUnit.join(' '), custom, 1)[0]
+    if (withUnit && withUnit.s >= 900) {
+      food = withUnit.food
+      portionLabel = undefined
+    }
+  }
   const n = qty ?? 1
   if (!food) return { text: segment, amount: 0, portionText: '' }
 

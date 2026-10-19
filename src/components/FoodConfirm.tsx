@@ -158,7 +158,7 @@ export function FoodConfirm({
           </div>
         ) : (
           <div className="small muted" style={{ textAlign: 'center', marginTop: 6 }}>
-            Werte anders? Hoch/runter wischen oder antippen
+            Werte anders? Mit ▲▼ anpassen oder Zahl antippen
           </div>
         )}
       </div>

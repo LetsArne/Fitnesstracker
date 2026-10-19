@@ -12,6 +12,9 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 )
 
+// Browser bitten, die lokal gespeicherten Einträge nie automatisch zu löschen
+navigator.storage?.persist?.().catch(() => {})
+
 // Offline-Fähigkeit & „Zum Home-Bildschirm“ (nur im echten Build)
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'))

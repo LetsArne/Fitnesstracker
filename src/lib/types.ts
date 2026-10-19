@@ -26,6 +26,8 @@ export interface Food {
   favorite?: boolean
   /** Direkteintrag: Werte gelten pro Portion (= „100“ Einheiten) statt pro 100 g */
   direct?: boolean
+  /** Eigene Variante eines Datenbank-Lebensmittels (z. B. Skyr mit eigenen Werten) */
+  baseId?: string
 }
 
 export type Meal = 'breakfast' | 'lunch' | 'dinner' | 'snack'

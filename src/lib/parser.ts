@@ -91,9 +91,15 @@ interface Candidate {
 }
 
 function candidates(custom: Food[]): Candidate[] {
+  // Eigene Varianten (z. B. „Skyr“ mit gemerkten Werten) ersetzen das Original
+  // und übernehmen dessen Suchbegriffe („skyr“, „eier“ …).
+  const overridden = new Map(custom.filter((f) => f.baseId).map((f) => [f.baseId!, f]))
   return [
-    ...custom.map((f) => ({ food: f, aliases: [normalize(f.name)], bonus: 50 })),
-    ...FOODS.map((f) => ({ food: f as Food, aliases: f.aliases.map(normalize), bonus: 0 })),
+    ...custom.map((f) => {
+      const base = f.baseId ? FOODS.find((b) => b.id === f.baseId) : undefined
+      return { food: f, aliases: [normalize(f.name), ...(base?.aliases.map(normalize) ?? [])], bonus: 50 }
+    }),
+    ...FOODS.filter((f) => !overridden.has(f.id)).map((f) => ({ food: f as Food, aliases: f.aliases.map(normalize), bonus: 0 })),
   ]
 }
 

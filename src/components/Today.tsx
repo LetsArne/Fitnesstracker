@@ -188,8 +188,8 @@ export function Today() {
               initialAmount={editing.amount}
               meal={editing.meal}
               confirmLabel="Speichern"
-              onConfirm={async (amount, meal) => {
-                await putEntry({ ...editing, amount, meal, nutrients: scale(editing.food!.per100, amount) })
+              onConfirm={async (amount, meal, food) => {
+                await putEntry({ ...editing, amount, meal, food, nutrients: scale(food.per100, amount) })
                 setEditing(null)
               }}
               onDelete={async () => {

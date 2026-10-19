@@ -72,3 +72,13 @@ describe('Ziele', () => {
     expect(t.protein).toBe(99)
   })
 })
+
+describe('Eigene Werte', () => {
+  it('bevorzugt gemerkte Variante inkl. Suchbegriffen', () => {
+    const own = { id: 'own-db-0', name: 'Ei', per100: { kcal: 150, protein: 14, carbs: 1, fat: 10 }, unit: 'g' as const, portions: [{ label: 'Stück', grams: 60 }], source: 'custom' as const, baseId: 'db-0' }
+    const [item] = parseInput('2 Eier', [own])
+    expect(item.food?.id).toBe('own-db-0')
+    expect(item.amount).toBe(120)
+    expect(rankFoods('ei', [own]).filter((f) => f.name === 'Ei')).toHaveLength(1)
+  })
+})

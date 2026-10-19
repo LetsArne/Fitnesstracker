@@ -865,3 +865,51 @@ label.field {
     font-size: 17px;
   }
 }
+
+/* Wisch-Regler für Nährwerte */
+.dial {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2px 0;
+  border-radius: 12px;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: ns-resize;
+}
+
+.dial:active {
+  background: var(--surface-2);
+}
+
+.dial b {
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.dial input {
+  width: 64px;
+  padding: 2px 4px;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.dial-arrow {
+  font-size: 11px;
+  line-height: 0.8;
+  color: var(--muted);
+  opacity: 0.6;
+}
+
+.dial-label {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.dial.changed .dial-label::after {
+  content: ' •';
+  color: var(--accent);
+}

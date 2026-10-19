@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useStore } from '../data/store'
 import { fmt, scale } from '../lib/nutrition'
-import { MEALS, type Food, type Meal } from '../lib/types'
+import { MEALS, type Food, type Meal, type Nutrients } from '../lib/types'
+import { NutrientDial } from './NutrientDial'
 import { favKey, sourceBadge, toast } from './ui'
 
 /** Menge wählen und bestätigen – für neue und bestehende Einträge. */
@@ -17,7 +18,8 @@ export function FoodConfirm({
   initialAmount?: number
   meal: Meal
   confirmLabel?: string
-  onConfirm: (amount: number, meal: Meal) => void
+  /** `food` enthält evtl. angepasste Nährwerte */
+  onConfirm: (amount: number, meal: Meal, food: Food) => void
   onDelete?: () => void
 }) {
   const { foods, putFood, deleteFood } = useStore()
@@ -25,8 +27,36 @@ export function FoodConfirm({
   const [text, setText] = useState(String(defaultAmount))
   const [meal, setMeal] = useState<Meal>(initialMeal)
   const amount = Math.max(0, parseFloat(text.replace(',', '.')) || 0)
-  const n = scale(food.per100, amount)
+  // Angepasste Nährwerte werden pro 100 g gespeichert, damit sie mit der Menge mitwachsen
+  const [per100, setPer100] = useState<Nutrients>(food.per100)
+  const [remember, setRemember] = useState(false)
+  const n = scale(per100, amount)
   const unit = food.unit
+  const isChanged = (k: keyof Nutrients) => Math.abs(per100[k] - food.per100[k]) > 1e-6
+  const anyChanged = (['kcal', 'protein', 'carbs', 'fat'] as const).some(isChanged)
+  const setTotal = (k: keyof Nutrients, total: number) => {
+    if (amount > 0) setPer100({ ...per100, [k]: (total / amount) * 100 })
+  }
+
+  const confirm = async () => {
+    let result: Food = { ...food, per100 }
+    if (anyChanged && remember) {
+      // Eigene Variante speichern – wird ab jetzt bei Suche, Scan und Schnelleingabe bevorzugt
+      result =
+        food.source === 'custom'
+          ? result
+          : {
+              ...result,
+              id: 'own-' + (food.baseId ?? food.id),
+              source: 'custom',
+              baseId: food.source === 'db' ? food.id : food.baseId,
+              favorite: undefined,
+            }
+      await putFood(result)
+      toast(`✓ Werte für ${food.name} gemerkt`)
+    }
+    onConfirm(amount, meal, result)
+  }
 
   const key = favKey(food)
   const isFav = foods.some((f) => f.id === key && f.favorite)
@@ -64,7 +94,7 @@ export function FoodConfirm({
             {sourceBadge(food)}
             {!food.direct && (
               <span className="num">
-                {fmt(food.per100.kcal)} kcal · {fmt(food.per100.protein, 1)} g Protein / 100 {unit}
+                {fmt(per100.kcal)} kcal · {fmt(per100.protein, 1)} g Protein / 100 {unit}
               </span>
             )}
           </div>
@@ -109,23 +139,28 @@ export function FoodConfirm({
         </div>
       )}
 
-      <div className="card totals" style={{ marginBottom: 0 }}>
-        <div>
-          <b style={{ color: 'var(--kcal)' }}>{fmt(n.kcal)}</b>
-          <span>kcal</span>
+      <div className="card" style={{ marginBottom: 0, padding: '10px 8px' }}>
+        <div className="totals">
+          <NutrientDial label="kcal" value={n.kcal} step={5} digits={0} color="var(--kcal)" changed={isChanged('kcal')} onChange={(v) => setTotal('kcal', v)} />
+          <NutrientDial label="Protein g" value={n.protein} step={0.5} digits={1} color="var(--protein)" changed={isChanged('protein')} onChange={(v) => setTotal('protein', v)} />
+          <NutrientDial label="KH g" value={n.carbs} step={1} digits={1} changed={isChanged('carbs')} onChange={(v) => setTotal('carbs', v)} />
+          <NutrientDial label="Fett g" value={n.fat} step={0.5} digits={1} changed={isChanged('fat')} onChange={(v) => setTotal('fat', v)} />
         </div>
-        <div>
-          <b style={{ color: 'var(--protein)' }}>{fmt(n.protein, 1)}</b>
-          <span>Protein g</span>
-        </div>
-        <div>
-          <b>{fmt(n.carbs, 1)}</b>
-          <span>KH g</span>
-        </div>
-        <div>
-          <b>{fmt(n.fat, 1)}</b>
-          <span>Fett g</span>
-        </div>
+        {anyChanged ? (
+          <div className="row spread small" style={{ marginTop: 8, padding: '0 6px' }}>
+            <label className="row" style={{ gap: 6 }}>
+              <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} style={{ width: 18, height: 18 }} />
+              Für „{food.name}“ merken
+            </label>
+            <button className="muted" onClick={() => setPer100(food.per100)}>
+              ↺ zurücksetzen
+            </button>
+          </div>
+        ) : (
+          <div className="small muted" style={{ textAlign: 'center', marginTop: 6 }}>
+            Werte anders? Hoch/runter wischen oder antippen
+          </div>
+        )}
       </div>
 
       <div className="seg">
@@ -136,7 +171,7 @@ export function FoodConfirm({
         ))}
       </div>
 
-      <button className="btn btn-primary btn-block" disabled={amount <= 0} onClick={() => onConfirm(amount, meal)}>
+      <button className="btn btn-primary btn-block" disabled={amount <= 0} onClick={confirm}>
         {confirmLabel}
       </button>
       {onDelete && (

@@ -40,7 +40,7 @@ export function AddSheet({ date, meal: initialMeal, onClose }: { date: string; m
   const [view, setView] = useState<View>({ kind: 'main' })
   const [meal, setMeal] = useState<Meal>(initialMeal)
   const [text, setText] = useState('')
-  const [overrides, setOverrides] = useState<Record<string, number>>({})
+  const [overrides, setOverrides] = useState<Record<string, { amount: number; food: Food }>>({})
   const [removed, setRemoved] = useState<Set<string>>(new Set())
   const [online, setOnline] = useState<{ q: string; loading: boolean; results: Food[]; error?: string } | null>(null)
   const [listening, setListening] = useState(false)
@@ -58,13 +58,14 @@ export function AddSheet({ date, meal: initialMeal, onClose }: { date: string; m
     .map((item, i) => ({ item, key: itemKey(item, i) }))
     .filter(({ key }) => !removed.has(key))
   const matched = activeItems.filter(({ item }) => item.food)
-  const amountOf = (key: string, item: ParsedItem) => overrides[key] ?? item.amount
+  const amountOf = (key: string, item: ParsedItem) => overrides[key]?.amount ?? item.amount
+  const foodOf = (key: string, item: ParsedItem) => overrides[key]?.food ?? item.food!
   const multi = parsed.length > 1
   const singleQuery = !multi ? text.trim() : ''
   const local = useMemo(() => (singleQuery.length >= 2 ? rankFoods(singleQuery, foods, 8) : []), [singleQuery, foods])
 
   const addAllParsed = async () => {
-    for (const { item, key } of matched) await add(item.food!, amountOf(key, item))
+    for (const { item, key } of matched) await add(foodOf(key, item), amountOf(key, item))
     toast(matched.length === 1 ? '✓ Eingetragen' : `✓ ${matched.length} Einträge hinzugefügt`)
     onClose()
   }
@@ -138,13 +139,13 @@ export function AddSheet({ date, meal: initialMeal, onClose }: { date: string; m
           initialAmount={view.amount}
           meal={meal}
           confirmLabel={view.parsedKey ? 'Übernehmen' : 'Hinzufügen'}
-          onConfirm={async (amount, m) => {
+          onConfirm={async (amount, m, food) => {
             if (view.parsedKey) {
-              setOverrides({ ...overrides, [view.parsedKey]: amount })
+              setOverrides({ ...overrides, [view.parsedKey]: { amount, food } })
               setView({ kind: 'main' })
               return
             }
-            await add(view.food, amount, m)
+            await add(food, amount, m)
             toast(`✓ ${view.food.name} eingetragen`)
             onClose()
           }}
@@ -289,7 +290,7 @@ export function AddSheet({ date, meal: initialMeal, onClose }: { date: string; m
 
   const totalParsed: Nutrients = matched.reduce(
     (a, { item, key }) => {
-      const n = scale(item.food!.per100, amountOf(key, item))
+      const n = scale(foodOf(key, item).per100, amountOf(key, item))
       return { kcal: a.kcal + n.kcal, protein: a.protein + n.protein, carbs: a.carbs + n.carbs, fat: a.fat + n.fat }
     },
     { kcal: 0, protein: 0, carbs: 0, fat: 0 },
@@ -358,15 +359,15 @@ export function AddSheet({ date, meal: initialMeal, onClose }: { date: string; m
                   <button
                     className="grow"
                     style={{ textAlign: 'left', minWidth: 0 }}
-                    onClick={() => setView({ kind: 'confirm', food: item.food!, amount: amountOf(key, item), parsedKey: key })}
+                    onClick={() => setView({ kind: 'confirm', food: foodOf(key, item), amount: amountOf(key, item), parsedKey: key })}
                   >
                     <div className="ellipsis" style={{ fontWeight: 600 }}>
                       {item.food.name}
                     </div>
                     <div className="small muted ellipsis">
                       {amountLabel(item.food, amountOf(key, item), item.food.unit)} ·{' '}
-                      {fmt(scale(item.food.per100, amountOf(key, item)).kcal)} kcal ·{' '}
-                      <span className="protein-tag">{fmt(scale(item.food.per100, amountOf(key, item)).protein)} g P</span>
+                      {fmt(scale(foodOf(key, item).per100, amountOf(key, item)).kcal)} kcal ·{' '}
+                      <span className="protein-tag">{fmt(scale(foodOf(key, item).per100, amountOf(key, item)).protein)} g P</span>
                     </div>
                   </button>
                   <button className="icon-btn" aria-label="Entfernen" onClick={() => setRemoved(new Set(removed).add(key))}>

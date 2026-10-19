@@ -158,6 +158,27 @@ const ROWS: Row[] = [
   ['Wein', 'wein|rotwein|weißwein|rosé|sekt|prosecco', 83, 0.1, 2.6, 0, 'ml', 'Glas:150'],
   ['Wasser', 'wasser|mineralwasser|sprudel|tee', 0, 0, 0, 0, 'ml', 'Glas:250|Flasche:500'],
 
+  // Backen & Kochen
+  ['Weizenmehl', 'mehl|weizenmehl|weissmehl|mehl type 405|type 405', 340, 10, 72, 1, 'g', 'EL:10|Tasse:120'],
+  ['Dinkelmehl', 'dinkelmehl|vollkornmehl|dinkelvollkornmehl|type 630', 340, 12, 68, 2, 'g', 'EL:10|Tasse:120'],
+  ['Mandelmehl', 'mandelmehl|gemahlene mandeln|mandeln gemahlen', 580, 22, 7, 49, 'g', 'EL:8'],
+  ['Zucker', 'zucker|rohrzucker|puderzucker|brauner zucker|vanillezucker', 400, 0, 100, 0, 'g', 'TL:5|EL:12|Päckchen:8'],
+  ['Süßstoff / Erythrit', 'süssstoff|süßstoff|erythrit|xylit|stevia|sukrin', 0, 0, 0, 0, 'g', 'TL:5|EL:12'],
+  ['Ahornsirup', 'ahornsirup|agavendicksaft|sirup|dattelsirup', 260, 0, 67, 0, 'g', 'EL:20|TL:7'],
+  ['Backpulver', 'backpulver|natron', 100, 0, 25, 0, 'g', 'TL:4|Päckchen:15'],
+  ['Backkakao', 'kakao|backkakao|kakaopulver', 350, 20, 10, 22, 'g', 'EL:8|TL:3'],
+  ['Eiklar', 'eiklar|eiweiss vom ei|eiweiß vom ei|flüssiges eiweiß|eiweiss flussig', 48, 11, 0.7, 0.2, 'g', 'Stück:33|Portion:100'],
+  ['Salz', 'salz|prise salz|meersalz', 0, 0, 0, 0, 'g', 'Prise:1|TL:5'],
+  ['Gewürze', 'pfeffer|zimt|vanille|muskat|paprikapulver|curry|kurkuma|oregano|basilikum|kräuter|gewürz|gewürze|chili', 0, 0, 0, 0, 'g', 'Prise:1|TL:2'],
+  ['Knoblauch', 'knoblauch|knoblauchzehe', 140, 6, 28, 0.1, 'g', 'Zehe:4'],
+  ['Kokosöl', 'kokosöl|kokosfett', 880, 0, 0, 100, 'g', 'EL:10|TL:4'],
+  ['Mandeldrink', 'mandelmilch|mandeldrink', 24, 0.5, 3, 1.1, 'ml', 'Glas:200|Schuss:30'],
+  ['Passierte Tomaten', 'passierte tomaten|tomatenpüree|tomaten dose|dosentomaten|stückige tomaten|tomatensoße|tomatensauce', 35, 1.5, 6, 0.2, 'g', 'Dose:400|Packung:500'],
+  ['Tomatenmark', 'tomatenmark', 80, 4.5, 13, 0.5, 'g', 'EL:15'],
+  ['Kokosmilch', 'kokosmilch', 180, 1.6, 3, 18, 'ml', 'Dose:400'],
+  ['Sojasoße', 'sojasosse|sojasoße|sojasauce|soja sauce', 60, 8, 6, 0, 'ml', 'EL:15'],
+  ['Gemüsebrühe', 'brühe|gemüsebrühe|hühnerbrühe|bouillon', 5, 0.3, 0.6, 0.2, 'ml', 'Glas:250'],
+
   // Gerichte
   ['Pizza Margherita', 'pizza|pizza margherita|tiefkühlpizza', 245, 10.5, 30, 9, 'g', 'Pizza:350|Stück:90'],
   ['Döner', 'döner|döner kebab|kebab|dürüm', 190, 10, 18, 9, 'g', 'Stück:400'],

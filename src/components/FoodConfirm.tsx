@@ -13,6 +13,7 @@ export function FoodConfirm({
   confirmLabel = 'Hinzufügen',
   onConfirm,
   onDelete,
+  hideMeal,
 }: {
   food: Food
   initialAmount?: number
@@ -21,6 +22,8 @@ export function FoodConfirm({
   /** `food` enthält evtl. angepasste Nährwerte */
   onConfirm: (amount: number, meal: Meal, food: Food) => void
   onDelete?: () => void
+  /** z. B. beim Bearbeiten einer Rezept-Zutat */
+  hideMeal?: boolean
 }) {
   const { foods, putFood, deleteFood } = useStore()
   const defaultAmount = initialAmount ?? food.portions[0]?.grams ?? 100
@@ -163,13 +166,13 @@ export function FoodConfirm({
         )}
       </div>
 
-      <div className="seg">
+      {!hideMeal && <div className="seg">
         {MEALS.map((m) => (
           <button key={m.id} className={meal === m.id ? 'on' : ''} onClick={() => setMeal(m.id)}>
             {m.label.replace('essen', '')}
           </button>
         ))}
-      </div>
+      </div>}
 
       <button className="btn btn-primary btn-block" disabled={amount <= 0} onClick={confirm}>
         {confirmLabel}

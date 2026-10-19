@@ -28,6 +28,8 @@ export interface Food {
   direct?: boolean
   /** Eigene Variante eines Datenbank-Lebensmittels (z. B. Skyr mit eigenen Werten) */
   baseId?: string
+  /** Selbst gekochtes Rezept: Zutaten und Anzahl Portionen */
+  recipe?: { servings: number; ingredients: { name: string; amount: number; unit: 'g' | 'ml' }[] }
 }
 
 export type Meal = 'breakfast' | 'lunch' | 'dinner' | 'snack'

@@ -14,6 +14,9 @@ export interface ParsedItem {
 
 export function normalize(s: string): string {
   return s
+    .replace(/½/g, ' 1/2 ')
+    .replace(/¼/g, ' 1/4 ')
+    .replace(/¾/g, ' 3/4 ')
     .toLowerCase()
     .replace(/ß/g, 'ss')
     .normalize('NFD')
@@ -54,12 +57,15 @@ const PORTION_UNITS: Record<string, string> = {
   tafel: 'Tafel', tafeln: 'Tafel', tute: 'Tüte', tuten: 'Tüte', packung: 'Tüte',
   teller: 'Teller', schale: 'Schale', schalen: 'Schale', schussel: 'Schale',
   schuss: 'Schuss',
+  prise: 'Prise', prisen: 'Prise', msp: 'Prise', messerspitze: 'Prise',
+  packchen: 'Päckchen', pck: 'Päckchen', pk: 'Päckchen', tutchen: 'Päckchen',
+  zehe: 'Zehe', zehen: 'Zehe',
 }
 
 const GENERIC_GRAMS: Record<string, number> = {
   EL: 15, TL: 5, Glas: 200, Tasse: 150, Becher: 150, Handvoll: 30, Teller: 300,
   Schale: 250, Dose: 150, Flasche: 500, Scheibe: 30, Kugel: 60, Riegel: 50,
-  Tafel: 100, Tüte: 150, Schuss: 30,
+  Tafel: 100, Tüte: 150, Schuss: 30, Prise: 1, Päckchen: 10, Zehe: 4,
 }
 
 const SIZE_WORDS: Record<string, number> = {

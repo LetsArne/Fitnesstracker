@@ -45,19 +45,36 @@ export function parseLabel(raw: string): Partial<Nutrients> {
 /** Verkleinert das Foto und erhöht den Kontrast – macht die Texterkennung zuverlässiger. */
 async function prepareImage(file: File): Promise<HTMLCanvasElement> {
   const bitmap = await createImageBitmap(file)
-  const scaleBy = Math.min(1, 1800 / Math.max(bitmap.width, bitmap.height))
+  // Breite begrenzen, lange Screenshots aber nicht zu stark verkleinern
+  const scaleBy = Math.min(1, 1600 / bitmap.width, 4000 / bitmap.height)
   const canvas = document.createElement('canvas')
   canvas.width = Math.round(bitmap.width * scaleBy)
   canvas.height = Math.round(bitmap.height * scaleBy)
-  const ctx = canvas.getContext('2d')!
-  ctx.filter = 'grayscale(1) contrast(1.4)'
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })!
+  ctx.filter = 'grayscale(1)'
+  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+  // Dunkelmodus-Screenshots (helle Schrift auf dunklem Grund) umdrehen
+  const sample = ctx.getImageData(0, 0, canvas.width, canvas.height).data
+  let sumL = 0
+  let count = 0
+  for (let i = 0; i < sample.length; i += 4 * 97) {
+    sumL += sample[i]
+    count++
+  }
+  const dark = count > 0 && sumL / count < 110
+  ctx.filter = `grayscale(1) contrast(1.4)${dark ? ' invert(1)' : ''}`
   ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
   return canvas
 }
 
-export async function readLabel(file: File, onProgress?: (p: number) => void): Promise<{ text: string; values: Partial<Nutrients> }> {
+/** Erkennt Text auf einem Foto oder Screenshot – läuft komplett auf dem Gerät. */
+export async function readText(file: File, onProgress?: (p: number) => void): Promise<string> {
   const { createWorker } = await import('tesseract.js')
   const worker = await createWorker('deu', 1, {
+    // Von der App selbst ausgeliefert (scripts/copy-ocr.mjs) – kein CDN nötig
+    workerPath: '/ocr/worker.min.js',
+    corePath: '/ocr/',
+    langPath: '/ocr/lang',
     logger: (m: { status: string; progress: number }) => {
       if (m.status === 'recognizing text') onProgress?.(m.progress)
     },
@@ -65,8 +82,13 @@ export async function readLabel(file: File, onProgress?: (p: number) => void): P
   try {
     const image = await prepareImage(file)
     const { data } = await worker.recognize(image)
-    return { text: data.text, values: parseLabel(data.text) }
+    return data.text
   } finally {
     await worker.terminate()
   }
+}
+
+export async function readLabel(file: File, onProgress?: (p: number) => void): Promise<{ text: string; values: Partial<Nutrients> }> {
+  const text = await readText(file, onProgress)
+  return { text, values: parseLabel(text) }
 }

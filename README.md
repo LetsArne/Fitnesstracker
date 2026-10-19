@@ -8,6 +8,7 @@ Einfacher, **komplett kostenloser** Kalorien- und Protein-Tracker als Web-App f�
 - **🎤 Spracheingabe** über die im Browser eingebaute Spracherkennung
 - **▥ Barcode scannen** → Nährwerte aus [Open Food Facts](https://world.openfoodfacts.org) (kostenlos, sehr viele deutsche Produkte)
 - **📸 Etikett fotografieren** → Texterkennung (Tesseract) direkt auf dem Handy liest kcal, Protein, KH, Fett aus
+- **🍳 Rezept berechnen**: Screenshot/Foto oder Text eines Rezepts → Zutaten werden erkannt, Werte pro Portion berechnet, Rezept wird gespeichert
 - **✍️ Selbst eintragen**: schnell nur Gesamtwerte oder genau pro 100 g
 - Unbekannte Barcodes einmal fotografieren → beim nächsten Scan sofort da
 - **Favoriten, „Zuletzt gegessen“ mit 1-Tipp-Hinzufügen, „Wie gestern“** pro Mahlzeit
@@ -24,6 +25,8 @@ npm run dev     # Entwicklungsserver
 npm test        # Tests (Parser, Etikett-Erkennung, Ziele)
 npm run build   # Produktions-Build nach dist/
 ```
+
+Die Texterkennung (Tesseract + deutsches Sprachpaket) wird beim Bauen von `scripts/copy-ocr.mjs` nach `public/ocr` kopiert und von der App selbst ausgeliefert – ohne fremde Server, auch offline.
 
 > Kamera und Spracheingabe funktionieren nur über **HTTPS** (oder `localhost`). Zum Testen am Handy also am besten direkt die deployte Version nutzen.
 
@@ -70,7 +73,8 @@ src/
   lib/foods.ts      eingebaute Lebensmittel-Datenbank (~150 Grundnahrungsmittel)
   lib/parser.ts     versteht „2 Eier und ein Skyr“
   lib/off.ts        Open Food Facts (Barcode & Suche)
-  lib/label.ts      Etikett-Texterkennung
+  lib/label.ts      Texterkennung (Etikett & Screenshots)
+  lib/recipe.ts     Rezepte: Zutaten erkennen, pro Portion rechnen
   lib/nutrition.ts  Ziele & Berechnungen
   data/             Speicher: lokal oder Firebase
   components/       Oberfläche

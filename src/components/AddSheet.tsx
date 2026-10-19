@@ -7,6 +7,7 @@ import { MEALS, type Food, type Meal, type Nutrients } from '../lib/types'
 import { FoodConfirm } from './FoodConfirm'
 import { LabelScan } from './LabelScan'
 import { ManualForm, type ManualInitial } from './ManualForm'
+import { RecipeBuilder } from './RecipeBuilder'
 import { Scanner } from './Scanner'
 import { Sheet, amountLabel, favKey, sourceBadge, toast } from './ui'
 
@@ -18,6 +19,7 @@ type View =
   | { kind: 'not-found'; code: string }
   | { kind: 'label'; barcode?: string }
   | { kind: 'manual'; initial?: ManualInitial; photo?: string }
+  | { kind: 'recipe' }
 
 // Web Speech API (kostenlos im Browser eingebaut)
 type SpeechResult = ArrayLike<{ transcript: string; confidence: number }> & { isFinal: boolean }
@@ -261,6 +263,10 @@ export function AddSheet({ date, meal: initialMeal, onClose }: { date: string; m
     )
   }
 
+  if (view.kind === 'recipe') {
+    return <RecipeBuilder date={date} meal={meal} onClose={onClose} onBack={back} />
+  }
+
   if (view.kind === 'manual') {
     const found = view.initial?.per100 ? Object.keys(view.initial.per100).length : 0
     return (
@@ -401,11 +407,15 @@ export function AddSheet({ date, meal: initialMeal, onClose }: { date: string; m
           </button>
           <button className="tool" onClick={() => setView({ kind: 'label' })}>
             <span>📸</span>
-            Etikett-Foto
+            Etikett
+          </button>
+          <button className="tool" onClick={() => setView({ kind: 'recipe' })}>
+            <span>🍳</span>
+            Rezept
           </button>
           <button className="tool" onClick={() => setView({ kind: 'manual' })}>
             <span>✍️</span>
-            Selbst eintragen
+            Manuell
           </button>
         </div>
       )}

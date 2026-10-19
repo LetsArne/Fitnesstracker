@@ -91,6 +91,7 @@ export function favKey(food: Food): string {
 
 export function sourceBadge(food: Food) {
   if (food.source === 'off') return <span className="badge">Produkt</span>
+  if (food.recipe) return <span className="badge">Rezept</span>
   if (food.source === 'custom') return <span className="badge">Eigenes</span>
   return null
 }

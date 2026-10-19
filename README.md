@@ -56,7 +56,7 @@ Alternativ als klassisches **Cloudflare Pages**-Projekt: Build command `npm run 
 
    Lokal: `.env.example` nach `.env` kopieren und ausfüllen. Auf Cloudflare: als Build-Variablen eintragen und neu deployen.
 
-Ohne diese Variablen läuft die App einfach im lokalen Modus. Wer sich später anmeldet, bekommt die bisherigen Einträge automatisch ins Konto übernommen.
+Die Werte des Projekts `fitnestracker-55d85` sind bereits in [`src/data/config.ts`](src/data/config.ts) eingetragen – die Variablen braucht man nur für ein anderes Firebase-Projekt. Wer sich später anmeldet, bekommt die bisherigen Einträge automatisch ins Konto übernommen.
 
 ## Auf dem Handy installieren
 
